@@ -1,11 +1,11 @@
 import QRCode from 'qrcode';
 
 /**
- * Converts ANY Google Maps URL, Share link, or Place ID into a 100% working Google Maps URL.
- * Guarantees zero 400 or 404 errors on iOS and Android.
+ * Ensures Google Maps Place URLs open directly on the REVIEWS TAB (Tab Ulasan)
+ * using the official Google Maps `!9m1!1b1` data directive.
  */
 export function getDirectGoogleReviewURL(inputUrl: string, googlePlaceId?: string): string {
-  // 1. Explicit official Place ID provided (starts with ChIJ)
+  // 1. Official ChIJ Place ID provided
   if (googlePlaceId && googlePlaceId.trim()) {
     const pid = googlePlaceId.trim();
     if (pid.startsWith('ChIJ')) {
@@ -22,19 +22,37 @@ export function getDirectGoogleReviewURL(inputUrl: string, googlePlaceId?: strin
     url = `https://${url}`;
   }
 
-  // 2. Already a direct writereview or /review link with ChIJ placeid
-  if (url.includes('writereview') && url.includes('placeid=ChIJ')) {
+  // 2. Direct writereview or g.page review link
+  if (url.includes('writereview') || url.endsWith('/review')) {
     return url;
   }
 
-  // 3. Extract official ChIJ placeid parameter if present
+  // 3. Extract placeid parameter if present
   const matchPlaceId = url.match(/(?:placeid|place_id)=(ChIJ[a-zA-Z0-9_-]{20,})/i);
   if (matchPlaceId && matchPlaceId[1]) {
     return `https://search.google.com/local/writereview?placeid=${matchPlaceId[1]}`;
   }
 
-  // 4. Extract CID (hex or decimal) from Google Maps URL
-  // Format: ...:0xHEX! or ludocid=DEC or cid=DEC
+  // 4. g.page/r/SHORTCODE -> g.page/r/SHORTCODE/review
+  if (url.includes('g.page/r/')) {
+    const cleanUrl = url.replace(/\/$/, '');
+    return `${cleanUrl}/review`;
+  }
+
+  // 5. Standard Google Maps Place URL (google.com/maps/place/...)
+  // Append !9m1!1b1 to data parameter so Google Maps opens directly on the REVIEWS TAB (Tab Ulasan)
+  if (url.includes('google.com/maps/place/')) {
+    if (!url.includes('!9m1!1b1')) {
+      if (url.includes('/data=')) {
+        url = url.replace(/(\/data=[^&]*)/, '$1!9m1!1b1');
+      } else {
+        url = url + '/data=!9m1!1b1';
+      }
+    }
+    return url;
+  }
+
+  // 6. CID Fallback
   const matchCidParam = url.match(/(?:ludocid|cid)=([0-9]+)/i);
   if (matchCidParam && matchCidParam[1]) {
     return `https://maps.google.com/?cid=${matchCidParam[1]}`;
@@ -49,12 +67,6 @@ export function getDirectGoogleReviewURL(inputUrl: string, googlePlaceId?: strin
     } catch (err) {
       console.error('Failed to parse hex CID:', err);
     }
-  }
-
-  // 5. g.page/r/SHORTCODE -> g.page/r/SHORTCODE/review
-  if (url.includes('g.page/r/')) {
-    const cleanUrl = url.replace(/\/$/, '');
-    return `${cleanUrl}/review`;
   }
 
   return url;
@@ -91,6 +103,6 @@ export function getNFCPayloadDirect(googleReviewUrl: string, googlePlaceId?: str
   return {
     type: 'NDEF_URI',
     url: url,
-    instruction: `Tulis (write) URL Google Maps ini ke stiker NFC (NTAG213/215) menggunakan aplikasi NFC Tools atau NXP TagWriter.`,
+    instruction: `Tulis (write) URL Google Maps Reviews ini ke stiker NFC (NTAG213/215) menggunakan aplikasi NFC Tools atau NXP TagWriter.`,
   };
 }
