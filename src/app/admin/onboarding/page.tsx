@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { QrCode, Store, Link as LinkIcon, Sparkles, ArrowRight, ArrowLeft, CheckCircle2, Wand2 } from 'lucide-react';
+import { QrCode, Store, Link as LinkIcon, Sparkles, ArrowRight, ArrowLeft, CheckCircle2, Info, ExternalLink } from 'lucide-react';
 import { mockStore } from '@/lib/supabase';
 import { getDirectGoogleReviewURL } from '@/lib/qr';
 
@@ -15,36 +15,11 @@ export default function OnboardingPage() {
   const [customShortcode, setCustomShortcode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [converting, setConverting] = useState(false);
-  const [convertedNotice, setConvertedNotice] = useState(false);
-
-  const handleConvertLink = async (rawUrl: string) => {
-    if (!rawUrl.trim()) return;
-    setConverting(true);
-    setConvertedNotice(false);
-
-    try {
-      const res = await fetch('/api/expand-link', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: rawUrl }),
-      });
-      const data = await res.json();
-      if (data.success && data.review_form_url) {
-        setGoogleReviewUrl(data.review_form_url);
-        setConvertedNotice(true);
-      }
-    } catch (err) {
-      console.error('Auto convert error:', err);
-    } finally {
-      setConverting(false);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || (!googleReviewUrl.trim() && !googlePlaceId.trim())) {
-      setError('Nama UMKM dan (Link Review atau Place ID) wajib diisi!');
+      setError('Nama UMKM dan (Link Review atau Google Place ID) wajib diisi!');
       return;
     }
 
@@ -52,24 +27,7 @@ export default function OnboardingPage() {
     setError('');
 
     try {
-      let finalReviewUrl = getDirectGoogleReviewURL(googleReviewUrl.trim(), googlePlaceId.trim());
-
-      // If it's a shortlink, expand it server-side first
-      if (googleReviewUrl.includes('maps.app.goo.gl') || googleReviewUrl.includes('goo.gl') || googleReviewUrl.includes('g.co')) {
-        try {
-          const res = await fetch('/api/expand-link', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url: googleReviewUrl }),
-          });
-          const data = await res.json();
-          if (data.success && data.review_form_url) {
-            finalReviewUrl = data.review_form_url;
-          }
-        } catch {
-          // fallback
-        }
-      }
+      const finalReviewUrl = getDirectGoogleReviewURL(googleReviewUrl.trim(), googlePlaceId.trim());
 
       const umkm = await mockStore.createUMKM(
         name.trim(),
@@ -100,7 +58,7 @@ export default function OnboardingPage() {
           <ArrowLeft className="w-4 h-4" /> Kembali ke Dashboard
         </Link>
         <div className="flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/20 px-3 py-1.5 rounded-full text-xs font-semibold text-indigo-400">
-          <Sparkles className="w-3.5 h-3.5" /> Auto-Convert to Review Form
+          <Sparkles className="w-3.5 h-3.5" /> Direct 5-Star Review Form Generator
         </div>
       </header>
 
@@ -113,7 +71,7 @@ export default function OnboardingPage() {
             </div>
             <div>
               <h1 className="text-xl font-bold text-slate-100">Registrasi UMKM Baru</h1>
-              <p className="text-xs text-slate-400">Tempel link Google Maps apa saja — sistem otomatis mengubahnya jadi Form Review 5-Bintang</p>
+              <p className="text-xs text-slate-400">Generate QR Code & Link NFC yang langsung membuka Form Review 5-Bintang di HP</p>
             </div>
           </div>
 
@@ -141,70 +99,66 @@ export default function OnboardingPage() {
               </div>
             </div>
 
+            {/* Instruction Box for Direct 5-Star Review Form */}
+            <div className="bg-indigo-950/50 border border-indigo-500/30 rounded-2xl p-4 space-y-2 text-xs">
+              <div className="flex items-center gap-2 font-bold text-indigo-300">
+                <Info className="w-4 h-4 text-indigo-400 flex-shrink-0" />
+                Agar Form 5-Bintang Langsung Terbuka di HP Pelanggan:
+              </div>
+              <p className="text-slate-300 leading-relaxed text-[11.5px]">
+                Masukkan <strong>Google Place ID</strong> lokasi usahamu (berawalan <code>ChIJ...</code>). 
+                Dengan Place ID, QR Code akan otomatis langsung membuka <strong>Pop-up Form Rating 5-Bintang & Ulasan</strong> di aplikasi Google Maps HP pelanggan!
+              </p>
+              <a
+                href="https://developers.google.com/maps/documentation/javascript/examples/places-placeid-finder"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-indigo-400 hover:text-indigo-300 font-semibold text-[11px] underline pt-1"
+              >
+                Cari Google Place ID lokasi usahamu disini <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+
             <div>
               <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                Link Google Maps / Share Link <span className="text-rose-400">*</span>
+                Google Place ID (Format: ChIJ...)
+              </label>
+              <input
+                type="text"
+                placeholder="Contoh: ChIJN1t_tDeuEmsRUsoyG83frY4"
+                value={googlePlaceId}
+                onChange={(e) => setGooglePlaceId(e.target.value)}
+                className="w-full bg-slate-950/80 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl py-2.5 px-3.5 text-sm text-slate-100 placeholder-slate-500 transition-all outline-none font-mono text-xs"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+                Atau Link Google Maps / Share Link
               </label>
               <div className="relative">
                 <LinkIcon className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
                 <input
                   type="text"
-                  placeholder="Paste link apa saja dari Google Maps / Share Link..."
+                  placeholder="https://maps.app.goo.gl/... atau https://www.google.com/maps/place/..."
                   value={googleReviewUrl}
-                  onChange={(e) => {
-                    setGoogleReviewUrl(e.target.value);
-                    if (e.target.value.includes('maps') || e.target.value.includes('g.co') || e.target.value.includes('goo.gl')) {
-                      handleConvertLink(e.target.value);
-                    }
-                  }}
+                  onChange={(e) => setGoogleReviewUrl(e.target.value)}
                   className="w-full bg-slate-950/80 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl py-2.5 pl-10 pr-4 text-sm text-slate-100 placeholder-slate-500 transition-all outline-none"
-                  required
                 />
               </div>
-
-              {converting && (
-                <p className="text-[11px] text-indigo-400 mt-1.5 flex items-center gap-1.5 animate-pulse">
-                  <Wand2 className="w-3.5 h-3.5" /> Mengonversi link ke format Form Ulasan 5-Bintang...
-                </p>
-              )}
-
-              {convertedNotice && (
-                <p className="text-[11px] text-emerald-400 mt-1.5 flex items-center gap-1 font-medium">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Berhasil diubah ke URL Direct Form Review!
-                </p>
-              )}
-
-              <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
-                Tempel link Share dari aplikasi Google Maps, link browser, atau link pendek (g.co/maps.app.goo.gl).
-              </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                  Google Place ID (Opsional)
-                </label>
-                <input
-                  type="text"
-                  placeholder="ChIJ..."
-                  value={googlePlaceId}
-                  onChange={(e) => setGooglePlaceId(e.target.value)}
-                  className="w-full bg-slate-950/80 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl py-2.5 px-3.5 text-sm text-slate-100 placeholder-slate-500 transition-all outline-none font-mono text-xs"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                  Custom Shortcode (Opsional)
-                </label>
-                <input
-                  type="text"
-                  placeholder="misal: kopikenangan"
-                  value={customShortcode}
-                  onChange={(e) => setCustomShortcode(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                  className="w-full bg-slate-950/80 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl py-2.5 px-3.5 text-sm text-slate-100 placeholder-slate-500 transition-all outline-none font-mono"
-                />
-              </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+                Custom Shortcode (Opsional)
+              </label>
+              <input
+                type="text"
+                placeholder="misal: kopikenangan"
+                value={customShortcode}
+                onChange={(e) => setCustomShortcode(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                className="w-full bg-slate-950/80 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl py-2.5 px-3.5 text-sm text-slate-100 placeholder-slate-500 transition-all outline-none font-mono"
+              />
             </div>
 
             <div className="pt-2">

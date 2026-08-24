@@ -1,11 +1,12 @@
 import QRCode from 'qrcode';
 
 /**
- * Ensures Google Maps Place URLs open directly on the REVIEWS TAB (Tab Ulasan)
- * using the official Google Maps `!9m1!1b1` data directive.
+ * Returns the exact Google Direct Write-Review Form URL (5-star popup modal).
+ * If official ChIJ Place ID is provided or writereview URL is present,
+ * it guarantees opening the 5-star rating & review popup directly on mobile phones.
  */
 export function getDirectGoogleReviewURL(inputUrl: string, googlePlaceId?: string): string {
-  // 1. Official ChIJ Place ID provided
+  // 1. If official ChIJ Place ID is provided, construct direct 5-star review popup URL
   if (googlePlaceId && googlePlaceId.trim()) {
     const pid = googlePlaceId.trim();
     if (pid.startsWith('ChIJ')) {
@@ -22,25 +23,24 @@ export function getDirectGoogleReviewURL(inputUrl: string, googlePlaceId?: strin
     url = `https://${url}`;
   }
 
-  // 2. Direct writereview or g.page review link
-  if (url.includes('writereview') || url.endsWith('/review')) {
-    return url;
-  }
-
-  // 3. Extract placeid parameter if present
+  // 2. Extract official ChIJ placeid parameter if present in the input URL
   const matchPlaceId = url.match(/(?:placeid|place_id)=(ChIJ[a-zA-Z0-9_-]{20,})/i);
   if (matchPlaceId && matchPlaceId[1]) {
     return `https://search.google.com/local/writereview?placeid=${matchPlaceId[1]}`;
   }
 
-  // 4. g.page/r/SHORTCODE -> g.page/r/SHORTCODE/review
+  // 3. g.page/r/SHORTCODE -> g.page/r/SHORTCODE/review
   if (url.includes('g.page/r/')) {
     const cleanUrl = url.replace(/\/$/, '');
-    return `${cleanUrl}/review`;
+    return cleanUrl.endsWith('/review') ? cleanUrl : `${cleanUrl}/review`;
   }
 
-  // 5. Standard Google Maps Place URL (google.com/maps/place/...)
-  // Append !9m1!1b1 to data parameter so Google Maps opens directly on the REVIEWS TAB (Tab Ulasan)
+  // 4. Already a direct writereview link
+  if (url.includes('writereview')) {
+    return url;
+  }
+
+  // 5. Standard Google Maps Place URL fallback
   if (url.includes('google.com/maps/place/')) {
     if (!url.includes('!9m1!1b1')) {
       if (url.includes('/data=')) {
