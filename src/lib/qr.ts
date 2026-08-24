@@ -1,8 +1,8 @@
 import QRCode from 'qrcode';
 
 /**
- * Converts ANY Google Maps URL, Share Link, CID, or Place ID
- * into the official Google Direct Write-Review Form URL (5-star modal popup).
+ * Converts ANY Google Maps URL (including hex CIDs, place IDs, share links)
+ * into the exact official Google Review Form URL (5-star modal popup) with 64-bit BigInt precision.
  */
 export function getDirectGoogleReviewURL(inputUrl: string, googlePlaceId?: string): string {
   // 1. Explicit Place ID provided
@@ -39,15 +39,16 @@ export function getDirectGoogleReviewURL(inputUrl: string, googlePlaceId?: strin
     return `https://search.google.com/local/writereview?ludocid=${matchCid[1]}`;
   }
 
-  // 5. Extract Hex CID from standard Google Maps URL (format: ...:0xHEX!...)
-  const matchHex = url.match(/:(0x[0-9a-fA-F]+)/);
+  // 5. Extract Hex CID from standard Google Maps URL (format: 1s0x...:0xHEX!...)
+  // Uses BigInt to avoid 64-bit JS float precision truncation
+  const matchHex = url.match(/1s0x[0-9a-fA-F]+:(0x[0-9a-fA-F]+)/) || url.match(/:(0x[0-9a-fA-F]{10,})/);
   if (matchHex && matchHex[1]) {
     try {
-      // BigInt for 64-bit Hex CID conversion
-      const cidDec = BigInt(matchHex[1]).toString(10);
+      const hexStr = matchHex[1].startsWith('0x') ? matchHex[1] : `0x${matchHex[1]}`;
+      const cidDec = BigInt(hexStr).toString(10);
       return `https://search.google.com/local/writereview?ludocid=${cidDec}`;
     } catch (err) {
-      console.error('Failed to parse hex CID:', err);
+      console.error('Failed to parse hex CID with BigInt:', err);
     }
   }
 
