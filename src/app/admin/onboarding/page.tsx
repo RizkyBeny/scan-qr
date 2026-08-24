@@ -3,8 +3,9 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { QrCode, Store, Link as LinkIcon, Sparkles, ArrowRight, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { QrCode, Store, Link as LinkIcon, Sparkles, ArrowRight, ArrowLeft, Info } from 'lucide-react';
 import { mockStore } from '@/lib/supabase';
+import { getDirectGoogleReviewURL } from '@/lib/qr';
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -17,8 +18,8 @@ export default function OnboardingPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !googleReviewUrl.trim()) {
-      setError('Nama UMKM dan Link Google Review wajib diisi!');
+    if (!name.trim() || (!googleReviewUrl.trim() && !googlePlaceId.trim())) {
+      setError('Nama UMKM dan (Link Review atau Place ID) wajib diisi!');
       return;
     }
 
@@ -26,15 +27,15 @@ export default function OnboardingPage() {
     setError('');
 
     try {
-      // Validate or construct URL
-      let reviewUrl = googleReviewUrl.trim();
-      if (!reviewUrl.startsWith('http://') && !reviewUrl.startsWith('https://')) {
-        reviewUrl = `https://${reviewUrl}`;
-      }
+      // Auto format to direct writereview deep-link
+      const formattedReviewUrl = getDirectGoogleReviewURL(
+        googleReviewUrl.trim() || 'https://maps.google.com',
+        googlePlaceId.trim()
+      );
 
       const umkm = await mockStore.createUMKM(
         name.trim(),
-        reviewUrl,
+        formattedReviewUrl,
         googlePlaceId.trim() || undefined,
         customShortcode.trim() || undefined
       );
@@ -61,7 +62,7 @@ export default function OnboardingPage() {
           <ArrowLeft className="w-4 h-4" /> Kembali ke Dashboard
         </Link>
         <div className="flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/20 px-3 py-1.5 rounded-full text-xs font-semibold text-indigo-400">
-          <Sparkles className="w-3.5 h-3.5" /> Onboarding UMKM Baru
+          <Sparkles className="w-3.5 h-3.5" /> Direct Form Review Deep-Link
         </div>
       </header>
 
@@ -73,8 +74,8 @@ export default function OnboardingPage() {
               <QrCode className="w-6 h-6" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-slate-100">Registrasi UMKM & Generate Kode</h1>
-              <p className="text-xs text-slate-400">Buat link redirect QR Code & NFC Tag siap pakai untuk kasir</p>
+              <h1 className="text-xl font-bold text-slate-100">Registrasi Direct Form Review</h1>
+              <p className="text-xs text-slate-400">QR Code langsung memicu pop-up form review 5 bintang tanpa klik manual</p>
             </div>
           </div>
 
@@ -102,9 +103,34 @@ export default function OnboardingPage() {
               </div>
             </div>
 
+            <div className="bg-indigo-950/40 border border-indigo-500/20 rounded-xl p-3.5 text-xs text-indigo-300 space-y-1">
+              <div className="flex items-center gap-1.5 font-semibold text-indigo-200">
+                <Info className="w-4 h-4 text-indigo-400 flex-shrink-0" /> Tips Form Ulasan Langsung Terbuka:
+              </div>
+              <p className="text-slate-300 text-[11px] leading-relaxed">
+                Isi <strong>Google Place ID</strong> atau masukkan link format <code>search.google.com/local/writereview?placeid=...</code> agar saat discan, form bintang & ulasan Google <strong>langsung terbuka otomatis</strong> di HP pelanggan.
+              </p>
+            </div>
+
             <div>
               <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                Link Google Business Review <span className="text-rose-400">*</span>
+                Google Place ID (Rekomendasi Utama)
+              </label>
+              <input
+                type="text"
+                placeholder="Contoh: ChIJN1t_tDeuEmsRUsoyG83frY4"
+                value={googlePlaceId}
+                onChange={(e) => setGooglePlaceId(e.target.value)}
+                className="w-full bg-slate-950/80 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl py-2.5 px-3.5 text-sm text-slate-100 placeholder-slate-500 transition-all outline-none font-mono text-xs"
+              />
+              <p className="text-[11px] text-slate-500 mt-1">
+                Gunakan Google Place ID Finder resmi untuk mendapatkan ID lokasi tempat usaha kamu.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+                Atau Link Direct Review / Maps
               </label>
               <div className="relative">
                 <LinkIcon className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
@@ -114,40 +140,21 @@ export default function OnboardingPage() {
                   value={googleReviewUrl}
                   onChange={(e) => setGoogleReviewUrl(e.target.value)}
                   className="w-full bg-slate-950/80 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl py-2.5 pl-10 pr-4 text-sm text-slate-100 placeholder-slate-500 transition-all outline-none"
-                  required
                 />
               </div>
-              <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
-                Tip: Dapatkan link ini dari menu <em>Ask for reviews</em> di profil Google Bisnis Ku.
-              </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                  Custom Shortcode (Opsional)
-                </label>
-                <input
-                  type="text"
-                  placeholder="misal: kopikenangan"
-                  value={customShortcode}
-                  onChange={(e) => setCustomShortcode(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                  className="w-full bg-slate-950/80 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl py-2.5 px-3.5 text-sm text-slate-100 placeholder-slate-500 transition-all outline-none font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                  Google Place ID (Opsional)
-                </label>
-                <input
-                  type="text"
-                  placeholder="ChIJ..."
-                  value={googlePlaceId}
-                  onChange={(e) => setGooglePlaceId(e.target.value)}
-                  className="w-full bg-slate-950/80 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl py-2.5 px-3.5 text-sm text-slate-100 placeholder-slate-500 transition-all outline-none font-mono text-xs"
-                />
-              </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+                Custom Shortcode (Opsional)
+              </label>
+              <input
+                type="text"
+                placeholder="misal: kopikenangan"
+                value={customShortcode}
+                onChange={(e) => setCustomShortcode(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                className="w-full bg-slate-950/80 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl py-2.5 px-3.5 text-sm text-slate-100 placeholder-slate-500 transition-all outline-none font-mono"
+              />
             </div>
 
             <div className="pt-2">
@@ -162,7 +169,7 @@ export default function OnboardingPage() {
                   </span>
                 ) : (
                   <>
-                    Generate QR Code & Link NFC <ArrowRight className="w-4 h-4" />
+                    Generate Direct Form Review QR Code <ArrowRight className="w-4 h-4" />
                   </>
                 )}
               </button>
@@ -173,7 +180,7 @@ export default function OnboardingPage() {
 
       {/* Footer */}
       <footer className="max-w-4xl w-full mx-auto text-center text-xs text-slate-500 py-4">
-        Instant Scan QR & NFC Auto-Review MVP System
+        Direct Form Review QR & NFC Generator System
       </footer>
     </div>
   );
