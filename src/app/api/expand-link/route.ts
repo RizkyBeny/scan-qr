@@ -31,13 +31,36 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Convert expanded URL to direct Reviews sheet URL (/maps/reviews/ + !9m1!1b1)
+    // Extract Place Name from URL path: /maps/place/Name+Here/@lat,lng
+    let placeName = '';
+    let lat = '';
+    let lon = '';
+
+    try {
+      const matchName = expandedUrl.match(/\/maps\/place\/([^/@]+)/);
+      if (matchName && matchName[1]) {
+        placeName = decodeURIComponent(matchName[1].replace(/\+/g, ' '));
+      }
+
+      const matchCoords = expandedUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+      if (matchCoords && matchCoords[1] && matchCoords[2]) {
+        lat = matchCoords[1];
+        lon = matchCoords[2];
+      }
+    } catch (err) {
+      console.error('Failed to parse place name from URL:', err);
+    }
+
+    // Convert expanded URL to direct Review URL
     const reviewFormUrl = getDirectGoogleReviewURL(expandedUrl);
 
     return NextResponse.json({
       success: true,
       original_url: inputUrl,
       expanded_url: expandedUrl,
+      place_name: placeName,
+      lat,
+      lon,
       review_form_url: reviewFormUrl,
     });
   } catch (err) {
