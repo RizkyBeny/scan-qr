@@ -1,31 +1,60 @@
 import QRCode from 'qrcode';
 
+/**
+ * Converts ANY Google Maps URL, Share Link, CID, or Place ID
+ * into the official Google Direct Write-Review Form URL (5-star modal popup).
+ */
 export function getDirectGoogleReviewURL(inputUrl: string, googlePlaceId?: string): string {
-  // 1. If Google Place ID is provided explicitly, construct official writereview deep-link
+  // 1. Explicit Place ID provided
   if (googlePlaceId && googlePlaceId.trim()) {
     const pid = googlePlaceId.trim();
-    return `https://search.google.com/local/writereview?placeid=${pid}`;
+    if (pid.startsWith('ChIJ') || pid.length > 5) {
+      return `https://search.google.com/local/writereview?placeid=${pid}`;
+    }
   }
 
-  let url = inputUrl.trim();
+  let url = (inputUrl || '').trim();
+  if (!url) {
+    return 'https://maps.google.com';
+  }
+
   if (!url.startsWith('http://') && !url.startsWith('https://')) {
     url = `https://${url}`;
   }
 
-  // 2. If URL contains a placeid parameter, ensure it uses search.google.com/local/writereview
-  try {
-    const parsed = new URL(url);
-    const placeIdParam = parsed.searchParams.get('placeid') || parsed.searchParams.get('place_id');
-    if (placeIdParam) {
-      return `https://search.google.com/local/writereview?placeid=${placeIdParam}`;
-    }
+  // 2. Already a direct writereview or /review link
+  if (url.includes('writereview') || url.endsWith('/review')) {
+    return url;
+  }
 
-    // 3. If URL is a g.page shortlink, append /review if not present
-    if (parsed.hostname.includes('g.page') && !parsed.pathname.endsWith('/review')) {
-      return `${url.replace(/\/$/, '')}/review`;
+  // 3. Check for placeid parameter
+  const matchPlaceId = url.match(/(?:placeid|place_id)=([a-zA-Z0-9_-]+)/i);
+  if (matchPlaceId && matchPlaceId[1]) {
+    return `https://search.google.com/local/writereview?placeid=${matchPlaceId[1]}`;
+  }
+
+  // 4. Check for ludocid or cid parameter
+  const matchCid = url.match(/(?:ludocid|cid)=([0-9]+)/i);
+  if (matchCid && matchCid[1]) {
+    return `https://search.google.com/local/writereview?ludocid=${matchCid[1]}`;
+  }
+
+  // 5. Extract Hex CID from standard Google Maps URL (format: ...:0xHEX!...)
+  const matchHex = url.match(/:(0x[0-9a-fA-F]+)/);
+  if (matchHex && matchHex[1]) {
+    try {
+      // BigInt for 64-bit Hex CID conversion
+      const cidDec = BigInt(matchHex[1]).toString(10);
+      return `https://search.google.com/local/writereview?ludocid=${cidDec}`;
+    } catch (err) {
+      console.error('Failed to parse hex CID:', err);
     }
-  } catch (err) {
-    console.error('URL parse helper warning:', err);
+  }
+
+  // 6. g.page/r/SHORTCODE -> g.page/r/SHORTCODE/review
+  if (url.includes('g.page/r/')) {
+    const cleanUrl = url.replace(/\/$/, '');
+    return `${cleanUrl}/review`;
   }
 
   return url;
