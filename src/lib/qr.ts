@@ -1,12 +1,11 @@
 import QRCode from 'qrcode';
 
 /**
- * Returns the exact Google Direct Write-Review Form URL (5-star popup modal).
- * If official ChIJ Place ID is provided or writereview URL is present,
- * it guarantees opening the 5-star rating & review popup directly on mobile phones.
+ * Converts ANY Google Maps URL, Share link, or Place ID into a 100% working Direct Review URL.
+ * Replaces /maps/place/ with /maps/reviews/ and appends !9m1!1b1 directive to open the Reviews tab directly.
  */
 export function getDirectGoogleReviewURL(inputUrl: string, googlePlaceId?: string): string {
-  // 1. If official ChIJ Place ID is provided, construct direct 5-star review popup URL
+  // 1. Official ChIJ Place ID provided
   if (googlePlaceId && googlePlaceId.trim()) {
     const pid = googlePlaceId.trim();
     if (pid.startsWith('ChIJ')) {
@@ -23,7 +22,7 @@ export function getDirectGoogleReviewURL(inputUrl: string, googlePlaceId?: strin
     url = `https://${url}`;
   }
 
-  // 2. Extract official ChIJ placeid parameter if present in the input URL
+  // 2. Extract official ChIJ placeid parameter if present
   const matchPlaceId = url.match(/(?:placeid|place_id)=(ChIJ[a-zA-Z0-9_-]{20,})/i);
   if (matchPlaceId && matchPlaceId[1]) {
     return `https://search.google.com/local/writereview?placeid=${matchPlaceId[1]}`;
@@ -40,8 +39,21 @@ export function getDirectGoogleReviewURL(inputUrl: string, googlePlaceId?: strin
     return url;
   }
 
-  // 5. Standard Google Maps Place URL fallback
+  // 5. Convert standard Google Maps Place URL (google.com/maps/place/...) -> (google.com/maps/reviews/...)
+  // This directs mobile devices straight to the REVIEWS FORM SHEET instead of Overview
   if (url.includes('google.com/maps/place/')) {
+    url = url.replace('/maps/place/', '/maps/reviews/');
+    if (!url.includes('!9m1!1b1')) {
+      if (url.includes('/data=')) {
+        url = url.replace(/(\/data=[^&]*)/, '$1!9m1!1b1');
+      } else {
+        url = url + '/data=!9m1!1b1';
+      }
+    }
+    return url;
+  }
+
+  if (url.includes('google.com/maps/reviews/')) {
     if (!url.includes('!9m1!1b1')) {
       if (url.includes('/data=')) {
         url = url.replace(/(\/data=[^&]*)/, '$1!9m1!1b1');

@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Convert expanded URL to direct Reviews tab URL using !9m1!1b1 directive
+    // Convert expanded URL to direct Reviews sheet URL (/maps/reviews/ + !9m1!1b1)
     const reviewFormUrl = getDirectGoogleReviewURL(expandedUrl);
 
     return NextResponse.json({
