@@ -1,8 +1,13 @@
 import QRCode from 'qrcode';
 
-export async function generateQRCodeDataURL(text: string): Promise<string> {
+export async function generateQRCodeDataURL(googleReviewUrl: string): Promise<string> {
   try {
-    return await QRCode.toDataURL(text, {
+    let targetUrl = googleReviewUrl.trim();
+    if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
+      targetUrl = `https://${targetUrl}`;
+    }
+
+    return await QRCode.toDataURL(targetUrl, {
       width: 400,
       margin: 2,
       color: {
@@ -12,7 +17,7 @@ export async function generateQRCodeDataURL(text: string): Promise<string> {
       errorCorrectionLevel: 'H',
     });
   } catch (err) {
-    console.error('Failed to generate QR Code:', err);
+    console.error('Failed to generate Direct Google Maps QR Code:', err);
     throw err;
   }
 }
@@ -24,16 +29,19 @@ export function getAppBaseURL(): string {
   return process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 }
 
-export function getRedirectURL(shortcode: string): string {
-  const baseUrl = getAppBaseURL();
-  return `${baseUrl}/r/${shortcode}`;
+export function getDirectGoogleReviewURL(googleReviewUrl: string): string {
+  let targetUrl = googleReviewUrl.trim();
+  if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
+    targetUrl = `https://${targetUrl}`;
+  }
+  return targetUrl;
 }
 
-export function getNFCPayload(shortcode: string) {
-  const url = getRedirectURL(shortcode);
+export function getNFCPayloadDirect(googleReviewUrl: string) {
+  const url = getDirectGoogleReviewURL(googleReviewUrl);
   return {
     type: 'NDEF_URI',
     url: url,
-    instruction: `Tulis (write) URL ini ke stiker NFC (NTAG213/215) menggunakan aplikasi NFC Tools atau NXP TagWriter.`,
+    instruction: `Tulis (write) URL Google Maps ini ke stiker NFC (NTAG213/215) menggunakan aplikasi NFC Tools atau NXP TagWriter.`,
   };
 }

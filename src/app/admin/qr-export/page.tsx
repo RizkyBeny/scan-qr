@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Download, Copy, Check, QrCode, Wifi, ArrowLeft, Printer, ExternalLink, Sparkles } from 'lucide-react';
 import { mockStore } from '@/lib/supabase';
-import { generateQRCodeDataURL, getRedirectURL, getNFCPayload } from '@/lib/qr';
+import { generateQRCodeDataURL, getDirectGoogleReviewURL } from '@/lib/qr';
 import { UMKM } from '@/types';
 
 function QRExportContent() {
@@ -27,8 +27,8 @@ function QRExportContent() {
 
       if (target) {
         setUmkm(target);
-        const redirectUrl = getRedirectURL(target.shortcode);
-        const qrUrl = await generateQRCodeDataURL(redirectUrl);
+        const directUrl = getDirectGoogleReviewURL(target.google_review_url);
+        const qrUrl = await generateQRCodeDataURL(directUrl);
         setQrDataUrl(qrUrl);
       }
       setLoading(false);
@@ -44,18 +44,17 @@ function QRExportContent() {
     );
   }
 
-  const redirectUrl = getRedirectURL(umkm.shortcode);
-  const nfcPayload = getNFCPayload(umkm.shortcode);
+  const directGoogleUrl = getDirectGoogleReviewURL(umkm.google_review_url);
 
   const handleCopyNFC = () => {
-    navigator.clipboard.writeText(redirectUrl);
+    navigator.clipboard.writeText(directGoogleUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   const handleDownloadPNG = () => {
     const link = document.createElement('a');
-    link.download = `QR-${umkm.shortcode}.png`;
+    link.download = `QR-GoogleMaps-${umkm.name.replace(/[^a-z0-9]/gi, '_')}.png`;
     link.href = qrDataUrl;
     link.click();
   };
@@ -93,7 +92,7 @@ function QRExportContent() {
           <ArrowLeft className="w-4 h-4" /> Kembali ke Dashboard
         </Link>
         <span className="text-xs font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full flex items-center gap-1.5">
-          <Check className="w-3.5 h-3.5" /> Registrasi Berhasil
+          <Check className="w-3.5 h-3.5" /> Direct Google Maps QR Generated
         </span>
       </header>
 
@@ -102,7 +101,7 @@ function QRExportContent() {
         {/* Left Column: Printable Card Preview */}
         <div className="flex flex-col items-center">
           <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3 w-full text-left">
-            Preview Standee Meja Kasir
+            Preview Standee Meja Kasir (Direct Google Maps)
           </h2>
 
           {/* Standee Card */}
@@ -120,7 +119,7 @@ function QRExportContent() {
               {umkm.name}
             </h3>
             <p className="text-xs text-slate-400 mb-6">
-              Punya pengalaman menyenangkan? Berikan ulasan singkat Anda!
+              Scan / Tap untuk langsung memberi rating & ulasan di Google Maps!
             </p>
 
             {/* QR Image Container */}
@@ -137,16 +136,16 @@ function QRExportContent() {
             {/* Instruction Icons */}
             <div className="w-full flex items-center justify-center gap-6 text-slate-300 text-xs font-medium bg-slate-950/60 py-3 rounded-xl border border-slate-800/80">
               <div className="flex items-center gap-1.5">
-                <QrCode className="w-4 h-4 text-indigo-400" /> Scan QR
+                <QrCode className="w-4 h-4 text-indigo-400" /> Direct QR
               </div>
               <div className="text-slate-600">•</div>
               <div className="flex items-center gap-1.5">
-                <Wifi className="w-4 h-4 text-emerald-400" /> Tap NFC
+                <Wifi className="w-4 h-4 text-emerald-400" /> Direct NFC
               </div>
             </div>
 
-            <div className="text-[10px] text-slate-500 mt-4 font-mono">
-              Link: {redirectUrl}
+            <div className="text-[10px] text-slate-500 mt-4 font-mono truncate max-w-[280px]">
+              Direct: {directGoogleUrl}
             </div>
           </div>
         </div>
@@ -155,13 +154,15 @@ function QRExportContent() {
         <div className="space-y-6 flex flex-col justify-center">
           <div>
             <h1 className="text-2xl font-bold text-slate-100 mb-1">{umkm.name}</h1>
-            <p className="text-xs text-slate-400 font-mono">Shortcode: {umkm.shortcode}</p>
+            <span className="inline-block text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-md">
+              ✓ Direct Link (100% Tanpa Server Web)
+            </span>
           </div>
 
           {/* Action Buttons for QR */}
           <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 space-y-3">
             <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-              <QrCode className="w-4 h-4 text-indigo-400" /> Opsi Cetak & Download QR
+              <QrCode className="w-4 h-4 text-indigo-400" /> Download & Cetak Standee QR
             </h3>
             
             <div className="grid grid-cols-2 gap-3">
@@ -183,18 +184,18 @@ function QRExportContent() {
           {/* NFC Tag Section */}
           <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 space-y-3">
             <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-              <Wifi className="w-4 h-4 text-emerald-400" /> Setup Stiker NFC Tag
+              <Wifi className="w-4 h-4 text-emerald-400" /> Setup Stiker NFC Tag Direct
             </h3>
             <p className="text-xs text-slate-400 leading-relaxed">
-              Tulis URL berikut ke stiker NFC (NTAG213 / NTAG215) menggunakan aplikasi gratis <strong>NFC Tools</strong> di HP Anda:
+              Tulis URL Google Maps ini langsung ke stiker NFC (NTAG213 / NTAG215) menggunakan aplikasi gratis <strong>NFC Tools</strong>:
             </p>
 
             <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-xl p-2.5 font-mono text-xs text-emerald-400 break-all">
-              <span className="truncate flex-1">{redirectUrl}</span>
+              <span className="truncate flex-1">{directGoogleUrl}</span>
               <button
                 onClick={handleCopyNFC}
                 className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors flex-shrink-0"
-                title="Copy URL"
+                title="Copy Direct URL"
               >
                 {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
               </button>
@@ -202,21 +203,21 @@ function QRExportContent() {
 
             {copied && (
               <p className="text-[11px] text-emerald-400 font-medium animate-pulse">
-                ✓ URL Redirect tersalin ke clipboard!
+                ✓ URL Google Maps tersalin ke clipboard!
               </p>
             )}
           </div>
 
-          {/* Target Link Verification */}
+          {/* Direct Link Verification */}
           <div className="bg-slate-900/50 border border-slate-800/80 rounded-xl p-4 text-xs">
-            <span className="text-slate-400 block mb-1">Target Google Review Link:</span>
+            <span className="text-slate-400 block mb-1">Tes Buka Link Google Review di Tab Baru:</span>
             <a
-              href={umkm.google_review_url}
+              href={directGoogleUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="text-indigo-400 hover:underline inline-flex items-center gap-1 font-mono text-[11px] break-all"
             >
-              {umkm.google_review_url} <ExternalLink className="w-3 h-3 flex-shrink-0" />
+              {directGoogleUrl} <ExternalLink className="w-3 h-3 flex-shrink-0" />
             </a>
           </div>
         </div>
@@ -224,7 +225,7 @@ function QRExportContent() {
 
       {/* Footer */}
       <footer className="max-w-4xl w-full mx-auto text-center text-xs text-slate-500 py-4">
-        Instant Scan QR & NFC Auto-Review MVP System
+        Direct Google Maps QR & NFC Generator System
       </footer>
     </div>
   );
